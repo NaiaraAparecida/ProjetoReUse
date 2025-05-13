@@ -20,8 +20,8 @@ const TradeProcessScreen = () => {
   const loadTrades = async () => {
     try {
       const storedTrades = await AsyncStorage.getItem('trades');
-      const parsed = storedTrades ? JSON.parse(storedTrades) : [];
-      setTrades(parsed);
+      const parsedTrades = storedTrades ? JSON.parse(storedTrades) : [];
+      setTrades(parsedTrades);
     } catch (error) {
       console.error('Erro ao carregar trocas:', error);
     }
@@ -29,36 +29,26 @@ const TradeProcessScreen = () => {
 
   const updateTradeStatus = async (id, status) => {
     try {
-      const updatedTrades = trades.map((item) =>
-        item.id === id ? { ...item, status } : item
+      const updatedTrades = trades.map((trade) =>
+        trade.id === id ? { ...trade, status } : trade
       );
       setTrades(updatedTrades);
       await AsyncStorage.setItem('trades', JSON.stringify(updatedTrades));
     } catch (error) {
-      console.error('Erro ao atualizar status:', error);
+      console.error('Erro ao atualizar status da troca:', error);
     }
   };
 
   const handleAccept = (id) => {
     Alert.alert('Confirmar', 'Deseja aceitar essa troca?', [
-      {
-        text: 'Sim',
-        onPress: () => {
-          updateTradeStatus(id, 'aceita');
-        },
-      },
+      { text: 'Sim', onPress: () => updateTradeStatus(id, 'aceita') },
       { text: 'Cancelar', style: 'cancel' },
     ]);
   };
 
   const handleReject = (id) => {
     Alert.alert('Confirmar', 'Deseja recusar essa troca?', [
-      {
-        text: 'Sim',
-        onPress: () => {
-          updateTradeStatus(id, 'recusada');
-        },
-      },
+      { text: 'Sim', onPress: () => updateTradeStatus(id, 'recusada') },
       { text: 'Cancelar', style: 'cancel' },
     ]);
   };
@@ -69,64 +59,33 @@ const TradeProcessScreen = () => {
       <View style={styles.info}>
         <Text style={styles.name}>{item.name}</Text>
         <Text style={styles.desc}>{item.description}</Text>
-        <Text style={styles.category}>Categoria: {item.category}</Text>
-
-        {/* Status */}
-        {item.status && (
-          <Text
-            style={[
-              styles.status,
-              item.status === 'aceita'
-                ? styles.statusAccepted
-                : styles.statusRejected,
-            ]}
-          >
-            Status: {item.status}
-          </Text>
-        )}
-
-        {!item.status && (
-          <View style={styles.actions}>
-            <TouchableOpacity
-              style={[styles.button, styles.accept]}
-              onPress={() => handleAccept(item.id)}
-            >
-              <Text style={styles.buttonText}>Aceitar</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.button, styles.reject]}
-              onPress={() => handleReject(item.id)}
-            >
-              <Text style={styles.buttonText}>Recusar</Text>
-            </TouchableOpacity>
-          </View>
-        )}
+        <Text style={styles.status}>Status: {item.status || "Pendente"}</Text>
+        <View style={styles.actions}>
+          {!item.status && (
+            <>
+              <TouchableOpacity style={styles.accept} onPress={() => handleAccept(item.id)}>
+                <Text style={styles.actionText}>Aceitar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.reject} onPress={() => handleReject(item.id)}>
+                <Text style={styles.actionText}>Recusar</Text>
+              </TouchableOpacity>
+            </>
+          )}
+        </View>
       </View>
     </View>
   );
 
   return (
     <View style={styles.container}>
-      {/* Logo */}
-      <View style={styles.logoContainer}>
-        <Image
-          source={require('../../assets/reciclagem.jpg')}
-          style={styles.logo}
-          resizeMode="contain"
-        />
-        <Text style={styles.title}>Processo de Troca</Text>
-      </View>
+      <Text style={styles.title}>Processo de Troca</Text>
 
-      {trades.length === 0 ? (
-        <Text style={styles.emptyText}>Nenhuma proposta de troca encontrada.</Text>
-      ) : (
-        <FlatList
-          data={trades}
-          keyExtractor={(item) => item.id.toString()}
-          renderItem={renderTrade}
-          contentContainerStyle={{ paddingBottom: 20 }}
-        />
-      )}
+      <FlatList
+        data={trades}
+        keyExtractor={(item) => item.id.toString()}
+        renderItem={renderTrade}
+        ListEmptyComponent={<Text style={styles.emptyText}>Nenhuma troca disponível.</Text>}
+      />
     </View>
   );
 };
@@ -137,90 +96,73 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#fff',
-    padding: 20,
-  },
-  logoContainer: {
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  logo: {
-    width: 60,
-    height: 60,
+    padding: 16,
+    marginTop: 20, // Evita que o texto fique grudado na câmera
+
   },
   title: {
     fontSize: 22,
     fontWeight: 'bold',
-    color: '#4CAF50',
-    marginTop: 6,
-  },
-  emptyText: {
-    fontSize: 16,
-    color: '#666',
     textAlign: 'center',
-    marginTop: 40,
+    marginBottom: 16,
+    color: '#4CAF50',
   },
   card: {
     flexDirection: 'row',
     backgroundColor: '#f9f9f9',
-    borderRadius: 10,
-    marginBottom: 15,
-    overflow: 'hidden',
-    elevation: 2,
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 12,
   },
   image: {
-    width: 100,
-    height: 100,
+    width: 60,
+    height: 60,
+    borderRadius: 8,
+    marginRight: 12,
   },
   info: {
     flex: 1,
-    padding: 10,
-    justifyContent: 'space-between',
   },
   name: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
+    fontWeight: 'bold',
   },
   desc: {
     fontSize: 14,
     color: '#666',
-    marginTop: 4,
   },
-  category: {
-    fontSize: 12,
-    color: '#999',
+  status: {
+    fontSize: 14,
     marginTop: 4,
+    fontWeight: 'bold',
+    color: '#4CAF50',
   },
   actions: {
     flexDirection: 'row',
     marginTop: 8,
-    gap: 8,
-  },
-  button: {
-    flex: 1,
-    paddingVertical: 8,
-    borderRadius: 6,
-    alignItems: 'center',
   },
   accept: {
     backgroundColor: '#4CAF50',
+    padding: 8,
+    borderRadius: 6,
+    marginRight: 8,
   },
   reject: {
     backgroundColor: '#FF5252',
+    padding: 8,
+    borderRadius: 6,
   },
-  buttonText: {
+  actionText: {
     color: '#fff',
     fontWeight: 'bold',
   },
-  status: {
-    marginTop: 8,
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
-  statusAccepted: {
-    color: '#4CAF50',
-  },
-  statusRejected: {
-    color: '#FF5252',
+  emptyText: {
+    textAlign: 'center',
+    marginTop: 20,
+    fontSize: 16,
+    color: '#999',
   },
 });
+
+
+

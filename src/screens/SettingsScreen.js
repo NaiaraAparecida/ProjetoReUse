@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, Image, Alert } from 'react-native';
+import { View, Text, StyleSheet, Image, Alert, ScrollView } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import Constants from 'expo-constants';
 import CustomButton from '../components/CustomButton';
 
 const SettingsScreen = ({ navigation }) => {
   const [userName, setUserName] = useState('Usuário');
+  const [email, setEmail] = useState('');
+  const [userAvatar, setUserAvatar] = useState(null);
 
   useEffect(() => {
     loadUser();
@@ -13,67 +14,83 @@ const SettingsScreen = ({ navigation }) => {
 
   const loadUser = async () => {
     try {
-      const userData = await AsyncStorage.getItem('user');
-      if (userData) {
-        const user = JSON.parse(userData);
+      const storedUser = await AsyncStorage.getItem('user');
+      if (storedUser) {
+        const user = JSON.parse(storedUser);
         setUserName(user.name || 'Usuário');
+        setEmail(user.email || '');
+        setUserAvatar(user.avatar || null);
       }
     } catch (error) {
-      console.log('Erro ao carregar usuário:', error);
+      console.error('Erro ao carregar usuário:', error);
     }
-  };
-
-  const handleLogout = async () => {
-    await AsyncStorage.clear();
-    Alert.alert('Deslogado', 'Você saiu do aplicativo.');
-    navigation.replace('Login');
   };
 
   const handleClearItems = async () => {
-    try {
-      await AsyncStorage.removeItem('items');
-      Alert.alert('Sucesso', 'Todos os itens foram apagados.');
-    } catch (error) {
-      Alert.alert('Erro', 'Não foi possível limpar os itens.');
-    }
+    await AsyncStorage.removeItem('items');
+    Alert.alert('Sucesso', 'Todos os itens foram apagados.');
+  };
+
+  const handleLogout = async () => {
+    Alert.alert(
+      'Sair',
+      'Você deseja realmente sair?',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Sair',
+          style: 'destructive',
+          onPress: async () => {
+            await AsyncStorage.clear();
+            navigation.reset({
+              index: 0,
+              routes: [{ name: 'Login' }],
+            });
+          },
+        },
+      ]
+    );
   };
 
   return (
-    <View style={styles.container}>
-      {/* Logo + Título */}
-      <View style={styles.logoContainer}>
+    <ScrollView style={styles.container}>
+      <View style={styles.header}>
         <Image
-          source={require('../../assets/reciclagem.jpg')}
-          style={styles.logo}
-          resizeMode="contain"
+          source={userAvatar ? { uri: userAvatar } : require('../../assets/reciclagem.jpg')}
+          style={styles.avatar}
         />
-        <Text style={styles.title}>Configurações</Text>
-        <Text style={styles.subTitle}>Bem-vindo, {userName}</Text>
+        <Text style={styles.userName}>{userName}</Text>
+        <Text style={styles.userEmail}>{email}</Text>
       </View>
 
-      {/* Ações */}
-      <CustomButton
-        title="Editar Perfil"
-        onPress={() => navigation.navigate('Profile')}
-      />
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Preferências</Text>
+        <CustomButton 
+          title="Editar Perfil" 
+          onPress={() => navigation.navigate('Profile')} 
+        />
+        <CustomButton 
+          title="Limpar Itens Cadastrados" 
+          onPress={handleClearItems} 
+          backgroundColor="#FFB300" 
+        />
+      </View>
 
-      <CustomButton
-        title="Limpar Itens Cadastrados"
-        onPress={handleClearItems}
-        backgroundColor="#FFB300"
-      />
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Informações do Aplicativo</Text>
+        <Text style={styles.infoText}>Versão: 1.0.0</Text>
+        <Text style={styles.infoText}>Desenvolvido por: ReUse Team</Text>
+      </View>
 
-      <CustomButton
-        title="Sair"
-        onPress={handleLogout}
-        backgroundColor="#FF5252"
-      />
-
-      {/* Versão do app */}
-      <Text style={styles.version}>
-        Versão {Constants.expoConfig?.version || '1.0.0'}
-      </Text>
-    </View>
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Conta</Text>
+        <CustomButton 
+          title="Sair" 
+          onPress={handleLogout} 
+          backgroundColor="#FF5252" 
+        />
+      </View>
+    </ScrollView>
   );
 };
 
@@ -82,35 +99,59 @@ export default SettingsScreen;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 24,
-    backgroundColor: '#fff',
+    backgroundColor: '#f4f4f4',
+    padding: 16,
   },
-  logoContainer: {
+  header: {
     alignItems: 'center',
-    marginBottom: 20,
-    marginTop: 10,
+    marginBottom: 24,
   },
-  logo: {
-    width: 60,
-    height: 60,
+  avatar: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    marginBottom: 12,
   },
-  title: {
+  userName: {
     fontSize: 22,
     fontWeight: 'bold',
     color: '#4CAF50',
-    marginTop: 6,
   },
-  subTitle: {
+  userEmail: {
     fontSize: 16,
+    color: '#555',
     marginTop: 4,
-    color: '#333',
   },
-  version: {
-    textAlign: 'center',
-    marginTop: 30,
-    fontSize: 13,
-    color: '#888',
+  section: {
+    marginBottom: 24,
+    backgroundColor: '#fff',
+    padding: 16,
+    borderRadius: 8,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowOffset: { width: 0, height: 1 },
+    elevation: 3,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 12,
+  },
+  infoText: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 4,
   },
 });
+
+
+
+
+
+
+
+
+
 
 

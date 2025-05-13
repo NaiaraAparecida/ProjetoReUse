@@ -20,7 +20,8 @@ const AddItemScreen = ({ navigation }) => {
   const [offerType, setOfferType] = useState('');
   const [images, setImages] = useState([]);
 
-  const [errors, setErrors] = useState({});
+  const options = ['Novo', 'Usado', 'Precisa de Reparo'];
+  const offers = ['Troca', 'Doação'];
 
   const pickImages = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -30,21 +31,36 @@ const AddItemScreen = ({ navigation }) => {
     });
 
     if (!result.canceled) {
-      setImages([...images, ...result.assets.map((img) => img.uri)]);
+      const selectedUris = result.assets.map((img) => img.uri);
+      setImages([...images, ...selectedUris]);
     }
   };
 
+  const removeImage = (index) => {
+    Alert.alert(
+      'Remover Imagem',
+      'Deseja remover esta imagem?',
+      [
+        {
+          text: 'Cancelar',
+          style: 'cancel',
+        },
+        {
+          text: 'Remover',
+          style: 'destructive',
+          onPress: () => {
+            setImages(images.filter((_, i) => i !== index));
+          },
+        },
+      ]
+    );
+  };
+
   const handleAddItem = async () => {
-    let newErrors = {};
-    if (!name.trim()) newErrors.name = 'Nome é obrigatório.';
-    if (!description.trim()) newErrors.description = 'Descrição é obrigatória.';
-    if (!condition) newErrors.condition = 'Selecione a condição.';
-    if (!offerType) newErrors.offerType = 'Selecione o tipo de oferta.';
-    if (images.length === 0) newErrors.images = 'Escolha ao menos uma imagem.';
-
-    setErrors(newErrors);
-
-    if (Object.keys(newErrors).length > 0) return;
+    if (!name.trim() || !description.trim() || !condition || !offerType || images.length === 0) {
+      Alert.alert('Erro', 'Preencha todos os campos e escolha ao menos uma imagem.');
+      return;
+    }
 
     const newItem = {
       id: Date.now().toString(),
@@ -62,94 +78,86 @@ const AddItemScreen = ({ navigation }) => {
       await AsyncStorage.setItem('items', JSON.stringify(items));
 
       Alert.alert('Sucesso', 'Item adicionado com sucesso!');
-      setName('');
-      setDescription('');
-      setCondition('');
-      setOfferType('');
-      setImages([]);
+      resetForm();
       navigation.navigate('Items');
     } catch (error) {
-      console.error('Erro ao salvar item:', error);
       Alert.alert('Erro', 'Erro ao salvar item. Tente novamente.');
     }
   };
 
-  const options = ['Novo', 'Usado', 'Precisa de Reparo'];
-  const offers = ['Troca', 'Doação'];
+  const resetForm = () => {
+    setName('');
+    setDescription('');
+    setCondition('');
+    setOfferType('');
+    setImages([]);
+  };
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <View style={styles.logoContainer}>
-        <Image
-          source={require('../../assets/reciclagem.jpg')}
-          style={styles.logo}
-        />
-        <Text style={styles.title}>Adicionar Item</Text>
-      </View>
+      <Text style={styles.title}>Adicionar Item</Text>
 
       <TouchableOpacity onPress={pickImages} style={styles.imagePicker}>
         {images.length > 0 ? (
           <ScrollView horizontal>
             {images.map((uri, idx) => (
-              <Image key={idx} source={{ uri }} style={styles.image} />
+              <View key={idx} style={styles.imageContainer}>
+                <Image source={{ uri }} style={styles.image} />
+                <TouchableOpacity
+                  style={styles.removeButton}
+                  onPress={() => removeImage(idx)}
+                >
+                  <Text style={styles.removeText}>✕</Text>
+                </TouchableOpacity>
+              </View>
             ))}
           </ScrollView>
         ) : (
           <Text style={styles.imageText}>Toque para escolher imagens</Text>
         )}
       </TouchableOpacity>
-      {errors.images && <Text style={styles.error}>{errors.images}</Text>}
 
       <InputField
-        label="Nome do Item"
+        placeholder="Nome do Item"
         value={name}
         onChangeText={setName}
-        placeholder="Ex: Livro, Celular..."
       />
-      {errors.name && <Text style={styles.error}>{errors.name}</Text>}
-
       <InputField
-        label="Descrição"
+        placeholder="Descrição"
         value={description}
         onChangeText={setDescription}
-        placeholder="Escreva detalhes sobre o item"
         multiline
       />
-      {errors.description && <Text style={styles.error}>{errors.description}</Text>}
 
-      <View style={styles.fieldGroupHorizontal}>
-        <Text style={styles.label}>Condição do Item</Text>
-        <View style={styles.optionRow}>
-          {options.map((opt) => (
-            <TouchableOpacity
-              key={opt}
-              onPress={() => setCondition(opt)}
-              style={[styles.optionButton, condition === opt && styles.selectedOption]}
-            >
-              <Text style={styles.optionText}>{opt}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-        {errors.condition && <Text style={styles.error}>{errors.condition}</Text>}
+      {/* Condição do Item */}
+      <Text style={styles.label}>Condição do Item:</Text>
+      <View style={styles.optionRow}>
+        {options.map((opt) => (
+          <TouchableOpacity
+            key={opt}
+            onPress={() => setCondition(opt)}
+            style={[styles.optionButton, condition === opt && styles.selectedOption]}
+          >
+            <Text style={styles.optionText}>{opt}</Text>
+          </TouchableOpacity>
+        ))}
       </View>
 
-      <View style={styles.fieldGroupHorizontal}>
-        <Text style={styles.label}>Tipo de Oferta</Text>
-        <View style={styles.optionRow}>
-          {offers.map((opt) => (
-            <TouchableOpacity
-              key={opt}
-              onPress={() => setOfferType(opt)}
-              style={[styles.optionButton, offerType === opt && styles.selectedOption]}
-            >
-              <Text style={styles.optionText}>{opt}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-        {errors.offerType && <Text style={styles.error}>{errors.offerType}</Text>}
+      {/* Tipo de Oferta */}
+      <Text style={styles.label}>Tipo de Oferta:</Text>
+      <View style={styles.optionRow}>
+        {offers.map((opt) => (
+          <TouchableOpacity
+            key={opt}
+            onPress={() => setOfferType(opt)}
+            style={[styles.optionButton, offerType === opt && styles.selectedOption]}
+          >
+            <Text style={styles.optionText}>{opt}</Text>
+          </TouchableOpacity>
+        ))}
       </View>
 
-      <CustomButton title="Toque para publicar" onPress={handleAddItem} />
+      <CustomButton title="Publicar Item" onPress={handleAddItem} />
     </ScrollView>
   );
 };
@@ -158,22 +166,18 @@ export default AddItemScreen;
 
 const styles = StyleSheet.create({
   container: {
+    flex: 1,
     padding: 20,
     backgroundColor: '#fff',
     paddingBottom: 60,
-  },
-  logoContainer: {
-    alignItems: 'center',
-    marginVertical: 20,
-  },
-  logo: {
-    width: 60,
-    height: 60,
+    marginTop: 20, // Evita que o texto fique grudado na câmera
+
   },
   title: {
     fontSize: 22,
     fontWeight: '600',
-    marginTop: 4,
+    textAlign: 'center',
+    marginBottom: 20,
     color: '#4CAF50',
   },
   imagePicker: {
@@ -182,14 +186,34 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
-    marginVertical: 20,
+    marginBottom: 20,
     padding: 10,
+    marginTop: 20, // ✅ Ajuste na margem superior
+  },
+  imageContainer: {
+    position: 'relative',
+    marginRight: 10,
+    marginTop: 10, // ✅ Espaçamento entre imagens
   },
   image: {
     width: 100,
     height: 100,
     borderRadius: 8,
-    marginRight: 10,
+  },
+  removeButton: {
+    position: 'absolute',
+    top: -10,
+    right: -10,
+    backgroundColor: '#FF5252',
+    borderRadius: 15,
+    width: 24,
+    height: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  removeText: {
+    color: '#fff',
+    fontWeight: 'bold',
   },
   imageText: {
     color: '#888',
@@ -199,17 +223,14 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '500',
     color: '#333',
+    marginTop: 16,
     marginBottom: 6,
-    marginTop: 6,
-  },
-  fieldGroupHorizontal: {
-    marginBottom: 16,
   },
   optionRow: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
-    gap: 12,
     flexWrap: 'wrap',
+    gap: 12,
+    marginBottom: 16,
   },
   optionButton: {
     paddingVertical: 8,
@@ -217,7 +238,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#ccc',
     borderRadius: 20,
-    marginBottom: 6,
   },
   selectedOption: {
     backgroundColor: '#4CAF50',
@@ -226,11 +246,14 @@ const styles = StyleSheet.create({
   optionText: {
     color: '#333',
   },
-  error: {
-    color: 'red',
-    fontSize: 13,
-    marginLeft: 4,
-    marginBottom: 6,
-  },
 });
+
+
+
+
+
+
+
+
+
 

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, Image } from 'react-native';
+import { View, Text, StyleSheet, Image, Alert, ActivityIndicator } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import InputField from '../components/InputField';
 import CustomButton from '../components/CustomButton';
 
@@ -7,59 +8,74 @@ const RegisterScreen = ({ navigation }) => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleRegister = () => {
-    if (!name || !email || !password) {
-      alert('Preencha todos os campos.');
+  const handleRegister = async () => {
+    if (!name.trim() || !email.trim() || !password.trim()) {
+      Alert.alert('Erro', 'Preencha todos os campos.');
       return;
     }
 
-    // Simulação de cadastro
-    alert('Conta criada com sucesso!');
-    navigation.navigate('Login');
+    setLoading(true);
+    try {
+      const storedUsers = await AsyncStorage.getItem('users');
+      const users = storedUsers ? JSON.parse(storedUsers) : [];
+
+      const userExists = users.some(user => user.email.toLowerCase() === email.toLowerCase());
+
+      if (userExists) {
+        Alert.alert('Erro', 'Este email já está cadastrado.');
+      } else {
+        const newUser = { name, email, password };
+        users.push(newUser);
+        await AsyncStorage.setItem('users', JSON.stringify(users));
+        Alert.alert('Sucesso', 'Conta criada com sucesso!');
+        navigation.replace('Login');
+      }
+    } catch (error) {
+      console.error('Erro ao registrar:', error);
+      Alert.alert('Erro', 'Erro ao criar conta. Tente novamente.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <View style={styles.container}>
-      {/* Logo e nome */}
       <View style={styles.logoContainer}>
-        <Image
-          source={require('../../assets/reciclagem.jpg')} 
-          style={styles.logo}
-          resizeMode="contain"
-        />
+        <Image source={require('../../assets/reciclagem.jpg')} style={styles.logo} />
         <Text style={styles.logoText}>ReUse</Text>
       </View>
 
-      {/* Formulário */}
       <View style={styles.formContainer}>
         <Text style={styles.title}>Criar Conta</Text>
 
-        <InputField
-          label="Nome"
-          value={name}
-          onChangeText={setName}
-          placeholder="Digite seu nome"
+        <InputField 
+          placeholder="Digite seu nome" 
+          value={name} 
+          onChangeText={setName} 
         />
-        <InputField
-          label="Email"
-          value={email}
-          onChangeText={setEmail}
-          placeholder="Digite seu email"
-          keyboardType="email-address"
+        <InputField 
+          placeholder="Digite seu email" 
+          value={email} 
+          onChangeText={setEmail} 
+          keyboardType="email-address" 
         />
-        <InputField
-          label="Senha"
-          value={password}
-          onChangeText={setPassword}
-          placeholder="Digite sua senha"
-          secureTextEntry
+        <InputField 
+          placeholder="Digite sua senha" 
+          value={password} 
+          onChangeText={setPassword} 
+          secureTextEntry 
         />
 
-        <CustomButton title="Cadastrar" onPress={handleRegister} />
+        <CustomButton 
+          title={loading ? <ActivityIndicator color="#FFF" /> : "Cadastrar"} 
+          onPress={handleRegister} 
+          disabled={loading}
+        />
 
-        <Text
-          style={styles.loginText}
+        <Text 
+          style={styles.loginText} 
           onPress={() => navigation.navigate('Login')}
         >
           Já tem uma conta? Entrar
@@ -96,10 +112,11 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   title: {
-    fontSize: 20,
-    fontWeight: '600',
+    fontSize: 24,
+    fontWeight: 'bold',
     color: '#333',
-    marginBottom: 8,
+    textAlign: 'center',
+    marginBottom: 12,
   },
   loginText: {
     marginTop: 16,
@@ -108,3 +125,9 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
 });
+
+
+
+
+
+

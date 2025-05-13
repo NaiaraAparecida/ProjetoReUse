@@ -1,177 +1,124 @@
 import React, { useEffect, useState } from 'react';
 import {
+  SafeAreaView,
   View,
   Text,
   StyleSheet,
   FlatList,
   Image,
-  TouchableOpacity,
   TextInput,
+  TouchableOpacity,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import ItemCard from '../components/ItemCard';
+import { getCurrentWeather } from '../services/weatherService';
 import { Ionicons } from '@expo/vector-icons';
-import { Picker } from '@react-native-picker/picker';
 
 const ItemsScreen = ({ navigation }) => {
   const [items, setItems] = useState([]);
   const [filteredItems, setFilteredItems] = useState([]);
   const [search, setSearch] = useState('');
-  const [category, setCategory] = useState('');
+  const [weather, setWeather] = useState(null);
 
   useEffect(() => {
-    const unsubscribe = navigation.addListener('focus', loadItems);
-    return unsubscribe;
-  }, [navigation]);
+    loadItems();
+    fetchWeather();
+  }, []);
 
   useEffect(() => {
     filterItems();
-  }, [search, category, items]);
+  }, [search, items]);
+
+  const fetchWeather = async () => {
+    const data = await getCurrentWeather();
+    setWeather(data);
+  };
 
   const loadItems = async () => {
-    try {
-      const storedItems = await AsyncStorage.getItem('items');
-      const parsedItems = storedItems ? JSON.parse(storedItems) : [];
-      setItems(parsedItems);
-    } catch (error) {
-      console.error('Erro ao carregar os itens:', error);
-    }
+    const storedItems = await AsyncStorage.getItem('items');
+    const parsedItems = storedItems ? JSON.parse(storedItems) : [];
+    setItems(parsedItems);
   };
 
   const filterItems = () => {
-    let results = items;
-
-    if (search) {
-      results = results.filter(item =>
-        item.name.toLowerCase().includes(search.toLowerCase())
-      );
-    }
-
-    if (category) {
-      results = results.filter(item => item.category === category);
-    }
-
+    const results = items.filter(item =>
+      item.name.toLowerCase().includes(search.toLowerCase())
+    );
     setFilteredItems(results);
   };
 
-  const renderItem = ({ item }) => (
-    <ItemCard
-      item={item}
-      onPress={() => navigation.navigate('AddItem', { item })}
-    />
-  );
-
   return (
-    <View style={styles.container}>
-      {/* Header com logo */}
-      <View style={styles.header}>
-        <Image
-          source={require('../../assets/reciclagem.jpg')}
-          style={styles.logo}
-          resizeMode="contain"
+    <SafeAreaView style={styles.safeArea}>
+      <View style={styles.container}>
+        <Text style={styles.title}>Itens Disponíveis</Text>
+        {weather && (
+          <View style={styles.weatherContainer}>
+            <Image source={{ uri: weather.icone }} style={styles.weatherIcon} />
+            <Text>{weather.cidade}: {weather.temperatura}</Text>
+          </View>
+        )}
+
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Buscar item por nome..."
+          value={search}
+          onChangeText={setSearch}
         />
-        <Text style={styles.headerText}>Itens Disponíveis</Text>
-      </View>
 
-      {/* Barra de busca */}
-      <TextInput
-        placeholder="Buscar item por nome..."
-        value={search}
-        onChangeText={setSearch}
-        style={styles.searchInput}
-        placeholderTextColor="#999"
-      />
-
-      {/* Filtro por categoria */}
-      <View style={styles.pickerContainer}>
-        <Picker
-          selectedValue={category}
-          onValueChange={(value) => setCategory(value)}
-          style={styles.picker}
-        >
-          <Picker.Item label="Todas as Categorias" value="" />
-          <Picker.Item label="Eletrônicos" value="Eletrônicos" />
-          <Picker.Item label="Roupas" value="Roupas" />
-          <Picker.Item label="Livros" value="Livros" />
-          <Picker.Item label="Brinquedos" value="Brinquedos" />
-        </Picker>
-      </View>
-
-      {/* Lista de itens ou mensagem vazia */}
-      {filteredItems.length === 0 ? (
-        <View style={styles.emptyContainer}>
-          <Text style={styles.emptyText}>Nenhum item encontrado.</Text>
-        </View>
-      ) : (
         <FlatList
-          data={filteredItems}
+          data={filteredItems.length ? filteredItems : items}
           keyExtractor={(item) => item.id}
-          renderItem={renderItem}
-          contentContainerStyle={{ paddingBottom: 100 }}
+          renderItem={({ item }) => <ItemCard item={item} />}
+          ListEmptyComponent={<Text style={styles.emptyText}>Nenhum item encontrado.</Text>}
         />
-      )}
 
-      {/* Botão flutuante "+" */}
-      <TouchableOpacity
-        style={styles.fab}
-        onPress={() => navigation.navigate('AddItem')}
-      >
-        <Ionicons name="add" size={32} color="#fff" />
-      </TouchableOpacity>
-    </View>
+        <TouchableOpacity
+          style={styles.fab}
+          onPress={() => navigation.navigate('AddItem')}
+        >
+          <Ionicons name="add" size={32} color="#fff" />
+        </TouchableOpacity>
+      </View>
+    </SafeAreaView>
   );
 };
 
-export default ItemsScreen;
-
 const styles = StyleSheet.create({
-  container: {
+  safeArea: {
     flex: 1,
     backgroundColor: '#fff',
-    paddingHorizontal: 16,
   },
-  header: {
-    alignItems: 'center',
-    paddingTop: 50,
-    paddingBottom: 10,
+  container: {
+    flex: 1,
+    padding: 16,
+    marginTop: 20, // Evita que o texto fique grudado na câmera
   },
-  logo: {
-    width: 60,
-    height: 60,
-    marginBottom: 4,
-  },
-  headerText: {
+  title: {
     fontSize: 22,
-    fontWeight: '600',
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginBottom: 16,
     color: '#4CAF50',
+  },
+  weatherContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  weatherIcon: {
+    width: 32,
+    height: 32,
+    marginRight: 8,
   },
   searchInput: {
     backgroundColor: '#f2f2f2',
+    padding: 10,
     borderRadius: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    fontSize: 16,
-    marginVertical: 10,
-    color: '#333',
-  },
-  pickerContainer: {
-    backgroundColor: '#f2f2f2',
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
     marginBottom: 10,
-    justifyContent: 'center',
-  },
-  picker: {
-    color: '#333',
-    width: '100%',
-  },
-  emptyContainer: {
-    flex: 1,
-    alignItems: 'center',
-    marginTop: 40,
   },
   emptyText: {
+    textAlign: 'center',
+    marginTop: 20,
     fontSize: 16,
     color: '#999',
   },
@@ -180,16 +127,20 @@ const styles = StyleSheet.create({
     bottom: 30,
     right: 30,
     backgroundColor: '#4CAF50',
-    borderRadius: 30,
     width: 60,
     height: 60,
+    borderRadius: 30,
     alignItems: 'center',
     justifyContent: 'center',
-    elevation: 6,
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowOffset: { width: 0, height: 4 },
-    shadowRadius: 4,
   },
 });
+
+export default ItemsScreen;
+
+
+
+
+
+
+
 

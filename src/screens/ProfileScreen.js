@@ -7,6 +7,7 @@ import {
   TextInput,
   TouchableOpacity,
   Alert,
+  ScrollView,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as ImagePicker from 'expo-image-picker';
@@ -22,44 +23,31 @@ const ProfileScreen = ({ navigation }) => {
 
   const loadUserData = async () => {
     try {
-      const userData = await AsyncStorage.getItem('user');
-      if (userData) {
-        setUser(JSON.parse(userData));
+      const storedUser = await AsyncStorage.getItem('user');
+      if (storedUser) {
+        setUser(JSON.parse(storedUser));
       }
     } catch (error) {
-      console.error('Erro ao carregar dados do usuário:', error);
+      console.error('Erro ao carregar perfil:', error);
     }
   };
 
   const handleSave = async () => {
     try {
       await AsyncStorage.setItem('user', JSON.stringify(user));
-      Alert.alert('Sucesso', 'Dados atualizados!');
+      Alert.alert('Sucesso', 'Perfil atualizado!');
       setEditing(false);
     } catch (error) {
-      Alert.alert('Erro', 'Não foi possível salvar os dados.');
+      Alert.alert('Erro', 'Não foi possível salvar.');
     }
   };
 
-  const handleLogout = () => {
-    Alert.alert('Sair', 'Deseja realmente sair?', [
-      { text: 'Cancelar', style: 'cancel' },
-      {
-        text: 'Sair',
-        style: 'destructive',
-        onPress: async () => {
-          await AsyncStorage.removeItem('user');
-          navigation.replace('Login');
-        },
-      },
-    ]);
-  };
-
-  const pickImage = async () => {
+  const handleChangeAvatar = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       aspect: [1, 1],
-      quality: 1,
+      quality: 0.8,
     });
 
     if (!result.canceled) {
@@ -67,47 +55,55 @@ const ProfileScreen = ({ navigation }) => {
     }
   };
 
+  const handleLogout = async () => {
+    Alert.alert(
+      'Sair',
+      'Você deseja realmente sair?',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Sair',
+          style: 'destructive',
+          onPress: async () => {
+            await AsyncStorage.clear();
+            navigation.reset({
+              index: 0,
+              routes: [{ name: 'Login' }],
+            });
+          },
+        },
+      ]
+    );
+  };
+
   return (
-    <View style={styles.container}>
-      {/* Logo ReUse */}
-      <View style={styles.logoContainer}>
-        <Image
-          source={require('../../assets/reciclagem.jpg')}
-          style={styles.logo}
-          resizeMode="contain"
-        />
-        <Text style={styles.logoText}>ReUse</Text>
+    <ScrollView contentContainerStyle={styles.container}>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={handleChangeAvatar}>
+          <Image 
+            source={user.avatar ? { uri: user.avatar } : require('../../assets/reciclagem.jpg')} 
+            style={styles.avatar} 
+          />
+        </TouchableOpacity>
+        <Text style={styles.userName}>{user.name || 'Seu Nome'}</Text>
+        <Text style={styles.userEmail}>{user.email || 'Seu Email'}</Text>
       </View>
 
-      {/* Avatar */}
-      <TouchableOpacity onPress={pickImage} style={styles.avatarContainer}>
-        <Image
-          source={
-            user.avatar
-              ? { uri: user.avatar }
-              : require('../../assets/perfil.jpg')
-          }
-          style={styles.avatar}
-        />
-        <Text style={styles.editPhotoText}>Toque para alterar foto</Text>
-      </TouchableOpacity>
-
-      {/* Formulário */}
       <View style={styles.form}>
-        <Text style={styles.label}>Nome</Text>
-        <TextInput
-          editable={editing}
-          value={user.name}
-          onChangeText={(text) => setUser({ ...user, name: text })}
-          style={[styles.input, !editing && styles.disabledInput]}
-        />
+        <Text style={styles.sectionTitle}>Editar Perfil</Text>
 
-        <Text style={styles.label}>Email</Text>
-        <TextInput
+        <TextInput 
+          value={user.name} 
+          onChangeText={(text) => setUser({ ...user, name: text })} 
+          style={styles.input} 
+          placeholder="Nome"
           editable={editing}
-          value={user.email}
-          onChangeText={(text) => setUser({ ...user, email: text })}
-          style={[styles.input, !editing && styles.disabledInput]}
+        />
+        <TextInput 
+          value={user.email} 
+          style={styles.input} 
+          placeholder="Email"
+          editable={false}
         />
 
         {editing ? (
@@ -116,13 +112,9 @@ const ProfileScreen = ({ navigation }) => {
           <CustomButton title="Editar Perfil" onPress={() => setEditing(true)} />
         )}
 
-        <CustomButton
-          title="Sair"
-          onPress={handleLogout}
-          backgroundColor="#FF5252"
-        />
+        <CustomButton title="Sair" onPress={handleLogout} backgroundColor="#FF5252" />
       </View>
-    </View>
+    </ScrollView>
   );
 };
 
@@ -130,60 +122,63 @@ export default ProfileScreen;
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    backgroundColor: '#fff',
+    flexGrow: 1,
+    backgroundColor: '#f4f4f4',
     padding: 24,
     alignItems: 'center',
+    marginTop: 20, // Evita que o texto fique grudado na câmera
+
+    
   },
-  logoContainer: {
+  header: {
     alignItems: 'center',
-    marginTop: 40,
-  },
-  logo: {
-    width: 60,
-    height: 60,
-  },
-  logoText: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#4CAF50',
-    marginTop: 4,
-  },
-  avatarContainer: {
-    marginTop: 24,
-    alignItems: 'center',
+    marginBottom: 24,
   },
   avatar: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    borderWidth: 2,
-    borderColor: '#4CAF50',
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    marginBottom: 12,
+    backgroundColor: '#E0E0E0',
   },
-  editPhotoText: {
-    color: '#888',
+  userName: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#4CAF50',
     marginTop: 8,
-    fontSize: 14,
+  },
+  userEmail: {
+    fontSize: 16,
+    color: '#555',
+    marginTop: 4,
   },
   form: {
     width: '100%',
-    marginTop: 24,
-    gap: 12,
+    paddingHorizontal: 16,
+    marginTop: 16,
   },
-  label: {
-    fontSize: 16,
-    color: '#444',
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 12,
+    textAlign: 'center',
   },
   input: {
-    backgroundColor: '#f2f2f2',
+    backgroundColor: '#fff',
     padding: 12,
     borderRadius: 8,
     fontSize: 16,
-  },
-  disabledInput: {
-    backgroundColor: '#e6e6e6',
-    color: '#999',
+    borderColor: '#ddd',
+    borderWidth: 1,
+    marginBottom: 12,
   },
 });
+
+
+
+
+
+
 
 

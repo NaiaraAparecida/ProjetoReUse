@@ -26,7 +26,7 @@ const styles = StyleSheet.create({
   logo: {
     fontSize: 22,
     fontWeight: 'bold',
-    color: '#4CAF50', // Verde moderno
+    color: '#4CAF50',
     marginRight: 10,
   },
   title: {
